@@ -1,0 +1,3 @@
+file_path: "images.txt"
+images_folder: "images"
+concurrency: 10
