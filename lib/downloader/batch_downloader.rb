@@ -5,29 +5,31 @@ require_relative '../downloader/image_downloader'
 
 class BatchDownloader
 
-  attr_reader :file_path, :images_folder, :thread_pool, :logger
+  attr_reader :file_path, :images_folder, :thread_pool, :logger, :reader_class, :downloader_class
 
-  def initialize(file_path, images_folder, concurrency, logger = Logger.new(STDOUT))
+  def initialize(file_path, images_folder, concurrency, logger = Logger.new(STDOUT), reader_class: URLReader, downloader_class: ImageDownloader, thread_pool_class: Concurrent::FixedThreadPool)
     @file_path = file_path
     @images_folder = File.expand_path("../../../#{images_folder}", __FILE__)
     @logger = logger
+    @reader_class = reader_class
+    @downloader_class = downloader_class
 
     begin
       FileUtils.mkdir_p(images_folder) unless Dir.exist?(images_folder)
-    rescue Errno::EACCES => e
+    rescue Errno::EACCES, Errno::EROFS => e
       logger.error "Permission denied while creating images folder: #{e.message}"
       raise e
     end
-    @thread_pool = Concurrent::FixedThreadPool.new(concurrency)
+    @thread_pool = thread_pool_class.new(concurrency)
   end
 
   def download
     begin
-      reader = URLReader.new(file_path)
+      reader = reader_class.new(file_path, logger)
       reader.each_valid_url do |url|
         thread_pool.post do
           begin
-            downloader = ImageDownloader.new(url, images_folder, logger)
+            downloader = downloader_class.new(url, images_folder, logger)
             downloader.download
           rescue => e
             logger.error "An error occurred while downloading #{url}: #{e.message}"

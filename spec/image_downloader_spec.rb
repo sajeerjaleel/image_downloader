@@ -63,8 +63,8 @@ describe ImageDownloader do
       end
 
       it 'logs an error message' do
-        expect(logger).to receive(:error).with("Permission denied while writing to #{images_folder}: Permission denied")
-        subject.download
+        expect { subject.download }.to raise_error(Errno::EACCES)
+        expect(logger).to have_received(:error).with("Permission denied while writing to #{images_folder}: Permission denied")
       end
     end
 
