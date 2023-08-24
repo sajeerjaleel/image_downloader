@@ -1,7 +1,8 @@
 require 'yaml'
 
 class Configuration
-  attr_reader :file_path, :images_folder, :concurrency
+
+  attr_reader :file_path, :images_folder, :concurrency, :log_file
 
   def initialize(yml_path = "../../config/config.yml")
     begin
@@ -11,6 +12,7 @@ class Configuration
       @file_path = config['file_path']
       @images_folder = config['images_folder']
       @concurrency = config['concurrency'].to_i
+      @log_file = config['log_file']
     rescue Errno::ENOENT
       puts "Error: Configuration file #{yml_path} not found."
       exit
