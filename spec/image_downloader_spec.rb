@@ -31,7 +31,7 @@ describe ImageDownloader do
       end
 
       it 'downloads the image from a valid URL' do
-        expect(File).to receive(:open).with(destination_path, 'wb')
+        expect(File).to receive(:open).with(a_string_matching("/tmp/images/test_image_"), 'wb')
         subject.download
       end
 

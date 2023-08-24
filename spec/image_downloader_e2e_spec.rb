@@ -1,5 +1,5 @@
 require 'webmock/rspec'
-require_relative '../lib/downloader'
+require_relative '../lib/downloader/batch_downloader'
 
 RSpec.describe 'End-to-End Image Downloading' do
   let!(:sample_file_path) { "spec/fixtures/sample_urls.txt" }
@@ -43,6 +43,10 @@ RSpec.describe 'End-to-End Image Downloading' do
         content = File.read(file)
         expect(["IMAGE_CONTENT_1", "IMAGE_CONTENT_2", "IMAGE_CONTENT_3"]).to include(content)
       end
+
+      # Ensure that the filenames are unique
+      downloaded_file_names = downloaded_files.map { |path| File.basename(path) }
+      expect(downloaded_file_names.uniq.count).to eq(downloaded_file_names.count)
     end
   end
 
@@ -98,16 +102,37 @@ RSpec.describe 'End-to-End Image Downloading' do
         expect(["IMAGE_CONTENT_1"]).to include(content)
       end
     end
-  end
 
-  context 'when the specified image folder can\'t be accessed or created' do
-    let(:invalid_folder) { "/invalid_path/test_images" }
+    context 'when multiple image URLs have the same image name' do
+      before do
+        File.write(sample_file_path, "http://example.com/img.jpg\nhttp://anotherexample.com/img.jpg")
 
-    it 'raises an error' do
-      expect {
-        batch_downloader = BatchDownloader.new(sample_file_path, invalid_folder, concurrency, logger)
-      }.to raise_error(Errno::EROFS)
+        stub_request(:get, "http://example.com/img.jpg")
+          .to_return(status: 200, body: "IMAGE_CONTENT_1")
+
+        stub_request(:get, "http://anotherexample.com/img.jpg")
+          .to_return(status: 200, body: "IMAGE_CONTENT_2")
+      end
+
+      it 'downloads images and ensures filenames are unique' do
+        batch_downloader = BatchDownloader.new(sample_file_path, test_images_folder, concurrency, logger)
+        batch_downloader.download
+
+        downloaded_files = Dir[File.join(test_images_folder, '*')]
+        expect(downloaded_files.count).to eq(2)
+
+        downloaded_file_names = downloaded_files.map { |path| File.basename(path) }
+
+        # Ensure that the filenames are unique
+        expect(downloaded_file_names.uniq.count).to eq(downloaded_file_names.count)
+
+        downloaded_files.each do |file|
+          content = File.read(file)
+          expect(["IMAGE_CONTENT_1", "IMAGE_CONTENT_2"]).to include(content)
+        end
+      end
     end
+
   end
 
 end

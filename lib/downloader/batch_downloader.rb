@@ -13,14 +13,8 @@ class BatchDownloader
     @logger = logger
     @reader_class = reader_class
     @downloader_class = downloader_class
-
-    begin
-      FileUtils.mkdir_p(images_folder) unless Dir.exist?(images_folder)
-    rescue Errno::EACCES, Errno::EROFS => e
-      logger.error "Permission denied while creating images folder: #{e.message}"
-      raise e
-    end
     @thread_pool = thread_pool_class.new(concurrency)
+    setup_folder
   end
 
   def download
@@ -28,12 +22,7 @@ class BatchDownloader
       reader = reader_class.new(file_path, logger)
       reader.each_valid_url do |url|
         thread_pool.post do
-          begin
-            downloader = downloader_class.new(url, images_folder, logger)
-            downloader.download
-          rescue => e
-            logger.error "An error occurred while downloading #{url}: #{e.message}"
-          end
+          download_url(url)
         end
       end
 
@@ -45,4 +34,25 @@ class BatchDownloader
       logger.error "An unexpected error occurred: #{e.message}"
     end
   end
+
+  private
+
+  def setup_folder
+    begin
+      FileUtils.mkdir_p(images_folder) unless Dir.exist?(images_folder)
+    rescue Errno::EACCES, Errno::EROFS => e
+      logger.error "Permission denied while creating images folder: #{e.message}"
+      raise e
+    end
+  end
+
+  def download_url(url)
+    begin
+      downloader = downloader_class.new(url, images_folder, logger)
+      downloader.download
+    rescue => e
+      logger.error "An error occurred while downloading #{url}: #{e.message}"
+    end
+  end
+
 end
