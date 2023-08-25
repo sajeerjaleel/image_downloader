@@ -1,0 +1,4 @@
+file_path: "images.txt"
+images_folder: "images"
+concurrency: 10
+log_file: "logs/application.log"
